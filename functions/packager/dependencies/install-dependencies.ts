@@ -11,16 +11,13 @@ export default function installDependencies(
 
     const spec = npa(depString);
 
+    // TODO 添加私有npm库 --registry=http://xxx.com  (root权限较好 全局yarn较好)
+    const cmdcmd = `mkdir -p ${packagePath} && cd ${packagePath} && yarn add ${depString} ${
+      spec.type === "git" ? "" : "--ignore-scripts"
+    } --no-lockfile --non-interactive --no-bin-links --ignore-engines --skip-integrity-check --cache-folder ./`
+
     exec(
-      `mkdir -p ${packagePath} && cd ${packagePath} && HOME=/tmp node ${join(
-        __dirname,
-        "../../../node_modules",
-        "yarn",
-        "lib",
-        "cli",
-      )} add ${depString} ${
-        spec.type === "git" ? "" : "--ignore-scripts"
-      } --no-lockfile --non-interactive --no-bin-links --ignore-engines --skip-integrity-check --cache-folder ./`,
+      cmdcmd,
       (err, stdout, stderr) => {
         if (err) {
           console.warn("got error from install: " + err);

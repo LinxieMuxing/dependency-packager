@@ -1,5 +1,5 @@
 import { Callback, Context } from "aws-lambda";
-import { S3 } from "aws-sdk";
+// import { S3 } from "aws-sdk";
 
 import { fs } from "mz";
 import * as path from "path";
@@ -17,19 +17,21 @@ import findRequires, { IFileData } from "./packages/find-requires";
 import getHash from "./utils/get-hash";
 
 import { VERSION } from "../config";
-import env from "./config.secret";
+// import env from "./config.secret";
 import resolve = require("resolve");
 import { packageFilter } from "./utils/resolver";
 import { execSync } from "child_process";
+const cors = require("cors")
 
-const { BUCKET_NAME } = process.env;
-const SAVE_TO_S3 = !process.env.DISABLE_CACHING;
+// const { BUCKET_NAME } = process.env;
+// const SAVE_TO_S3 = !process.env.DISABLE_CACHING;
 
-if (env.SENTRY_URL) {
-  Raven.config(env.SENTRY_URL!).install();
-}
+// if (env.SENTRY_URL) {
+//   Raven.config(env.SENTRY_URL!).install();
+// }
 
-const s3 = new S3();
+// TODO 添加OSS上传包逻辑
+// const s3 = new S3();
 
 /**
  * Remove a file from the content
@@ -51,34 +53,35 @@ function deleteHardcodedRequires(data: IFileData, deletePath: string) {
   }
 }
 
-function saveToS3(
-  dependency: { name: string; version: string },
-  response: object,
-) {
-  if (!BUCKET_NAME) {
-    throw new Error("No bucket has been specified");
-  }
+// function saveToS3(
+//   dependency: { name: string; version: string },
+//   response: object,
+// ) {
+//   if (!BUCKET_NAME) {
+//     throw new Error("No bucket has been specified");
+//   }
 
-  console.log(`Saving ${dependency} to S3`);
-  s3.putObject(
-    {
-      Body: zlib.gzipSync(JSON.stringify(response)),
-      Bucket: BUCKET_NAME,
-      Key: `v${VERSION}/packages/${dependency.name}/${dependency.version}.json`,
-      ACL: "public-read",
-      ContentType: "application/json",
-      CacheControl: "public, max-age=31536000",
-      ContentEncoding: "gzip",
-    },
-    (err) => {
-      if (err) {
-        console.log(err);
-        throw err;
-      }
-    },
-  );
-}
+//   console.log(`Saving ${dependency} to S3`);
+//   s3.putObject(
+//     {
+//       Body: zlib.gzipSync(JSON.stringify(response)),
+//       Bucket: BUCKET_NAME,
+//       Key: `v${VERSION}/packages/${dependency.name}/${dependency.version}.json`,
+//       ACL: "public-read",
+//       ContentType: "application/json",
+//       CacheControl: "public, max-age=31536000",
+//       ContentEncoding: "gzip",
+//     },
+//     (err) => {
+//       if (err) {
+//         console.log(err);
+//         throw err;
+//       }
+//     },
+//   );
+// }
 
+// 获取依赖信息
 async function getContents(
   dependency: any,
   packagePath: string,
@@ -154,10 +157,10 @@ const packagingDeps = new Set<string>();
 
 export async function call(event: any, context: Context, cb: Callback) {
   /** Immediate response for WarmUP plugin */
-  if (event.source === "serverless-plugin-warmup") {
-    console.log("WarmUP - Lambda is warm!");
-    return cb(undefined, "Lambda is warm!");
-  }
+  // if (event.source === "serverless-plugin-warmup") {
+  //   console.log("WarmUP - Lambda is warm!");
+  //   return cb(undefined, "Lambda is warm!");
+  // }
 
   const dependency = event;
   const hash = getHash(dependency);
@@ -177,12 +180,13 @@ export async function call(event: any, context: Context, cb: Callback) {
     try {
       const folders = fs.readdirSync("/tmp");
 
-      folders.forEach((f) => {
+      folders.forEach((f) => { 
         const p = path.join("/tmp/", f);
         try {
-          if (fs.statSync(p).isDirectory() && p !== "/tmp/git") {
-            execSync("rm -rf " + p);
-          }
+          // 不清理本地add资源
+          // if (fs.statSync(p).isDirectory() && p !== "/tmp/git") {
+          //   execSync("rm -rf " + p);
+          // }
         } catch (e) {
           console.error("Could not delete " + p + ", " + e.message);
         }
@@ -242,9 +246,9 @@ export async function call(event: any, context: Context, cb: Callback) {
       ),
     };
 
-    if (process.env.IN_LAMBDA) {
-      saveToS3(dependency, response);
-    }
+    // if (process.env.IN_LAMBDA) {
+    //   saveToS3(dependency, response);
+    // }
 
     // Cleanup
     try {
@@ -271,28 +275,29 @@ export async function call(event: any, context: Context, cb: Callback) {
       },
     });
 
-    if (process.env.IN_LAMBDA) {
-      // We try to call fly, which is a service with much more disk space, retry with this.
-      try {
-        const responseFromFly = await fetch(
-          `https://dependency-packager.fly.dev/${dependency.name}@${dependency.version}`,
-        ).then((x) => x.json());
+    // TODO 使用OSS上资源
+    // if (process.env.IN_LAMBDA) {
+    //   // We try to call fly, which is a service with much more disk space, retry with this.
+    //   try {
+    //     const responseFromFly = await fetch(
+    //       `https://dependency-packager.fly.dev/${dependency.name}@${dependency.version}`,
+    //     ).then((x) => x.json());
 
-        if (responseFromFly.error) {
-          throw new Error(responseFromFly.error);
-        }
+    //     if (responseFromFly.error) {
+    //       throw new Error(responseFromFly.error);
+    //     }
 
-        if (process.env.IN_LAMBDA) {
-          saveToS3(dependency, responseFromFly);
-        }
+    //     if (process.env.IN_LAMBDA) {
+    //       saveToS3(dependency, responseFromFly);
+    //     }
 
-        cb(undefined, responseFromFly);
-      } catch (ee) {
-        cb(undefined, { error: e.message });
-      }
-    } else {
+    //     cb(undefined, responseFromFly);
+    //   } catch (ee) {
+    //     cb(undefined, { error: e.message });
+    //   }
+    // } else {
       cb(undefined, { error: e.message });
-    }
+    // }
   } finally {
     packaging = false;
     packagingDeps.delete(hash);
@@ -300,13 +305,15 @@ export async function call(event: any, context: Context, cb: Callback) {
 }
 
 const PORT = process.env.PORT || 4545;
-if (!process.env.IN_LAMBDA) {
+// if (!process.env.IN_LAMBDA) {
   /* tslint:disable no-var-requires */
   const express = require("express");
   /* tslint:enable */
 
   const app = express();
 
+  // 添加跨域
+  app.use(cors())
   app.get("/*", (req: any, res: any) => {
     const packageParts = req.url.replace("/", "").split("@");
     const version = packageParts.pop();
@@ -338,4 +345,4 @@ if (!process.env.IN_LAMBDA) {
   app.listen(PORT, () => {
     console.log("Listening on " + PORT);
   });
-}
+// }
