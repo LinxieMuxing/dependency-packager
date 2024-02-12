@@ -176,7 +176,7 @@ export async function call(event: any, context: Context, cb: Callback) {
 
   // Cleanup!
   if (!packaging) {
-    console.log("Cleaning up /tmp");
+    // console.log("Cleaning up /tmp");
     try {
       const folders = fs.readdirSync("/tmp");
 

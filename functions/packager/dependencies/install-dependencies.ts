@@ -8,7 +8,7 @@ export default function installDependencies(
 ) {
   return new Promise<void>((resolve, reject) => {
     const depString = `${dependency.name}@${dependency.version}`;
-
+    if(dependency.version === 'favicon.ico') resolve()
     const spec = npa(depString);
 
     // TODO 添加私有npm库 --registry=http://xxx.com  (root权限较好 全局yarn较好)
