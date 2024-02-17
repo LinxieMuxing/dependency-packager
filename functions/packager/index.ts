@@ -21,7 +21,7 @@ import { VERSION } from "../config";
 import resolve = require("resolve");
 import { packageFilter } from "./utils/resolver";
 import { execSync } from "child_process";
-const cors = require("cors")
+const cors = require("cors");
 
 // const { BUCKET_NAME } = process.env;
 // const SAVE_TO_S3 = !process.env.DISABLE_CACHING;
@@ -180,7 +180,7 @@ export async function call(event: any, context: Context, cb: Callback) {
     try {
       const folders = fs.readdirSync("/tmp");
 
-      folders.forEach((f) => { 
+      folders.forEach((f) => {
         const p = path.join("/tmp/", f);
         try {
           // 不清理本地add资源
@@ -204,8 +204,10 @@ export async function call(event: any, context: Context, cb: Callback) {
 
   packaging = true;
   try {
+    // note：安装依赖
     await installDependencies(dependency, packagePath);
 
+    // note：获取包信息
     const packageInfos = await findPackageInfos(dependency.name, packagePath);
 
     Object.keys(packageInfos).map((pkgJSONPath) => {
@@ -214,6 +216,7 @@ export async function call(event: any, context: Context, cb: Callback) {
       verifyModuleField(pkg, pkgJSONPath);
     });
 
+    // note：获取content字段
     const contents = await getContents(dependency, packagePath, packageInfos);
 
     console.log(
@@ -275,7 +278,7 @@ export async function call(event: any, context: Context, cb: Callback) {
       },
     });
 
-    // TODO 使用OSS上资源
+    // TODO 使用OSS保存资源
     // if (process.env.IN_LAMBDA) {
     //   // We try to call fly, which is a service with much more disk space, retry with this.
     //   try {
@@ -296,7 +299,7 @@ export async function call(event: any, context: Context, cb: Callback) {
     //     cb(undefined, { error: e.message });
     //   }
     // } else {
-      cb(undefined, { error: e.message });
+    cb(undefined, { error: e.message });
     // }
   } finally {
     packaging = false;
@@ -306,43 +309,43 @@ export async function call(event: any, context: Context, cb: Callback) {
 
 const PORT = process.env.PORT || 4545;
 // if (!process.env.IN_LAMBDA) {
-  /* tslint:disable no-var-requires */
-  const express = require("express");
-  /* tslint:enable */
+/* tslint:disable no-var-requires */
+const express = require("express");
+/* tslint:enable */
 
-  const app = express();
+const app = express();
 
-  // 添加跨域
-  app.use(cors())
-  app.get("/*", (req: any, res: any) => {
-    const packageParts = req.url.replace("/", "").split("@");
-    const version = packageParts.pop();
+// 添加跨域
+app.use(cors());
+app.get("/*", (req: any, res: any) => {
+  const packageParts = req.url.replace("/", "").split("@");
+  const version = packageParts.pop();
 
-    const ctx = {} as Context;
-    const dep = { name: packageParts.join("@"), version };
+  const ctx = {} as Context;
+  const dep = { name: packageParts.join("@"), version };
 
-    console.log(dep);
-    call(dep, ctx, (err: any, result: any) => {
-      console.log(err);
+  console.log(dep);
+  call(dep, ctx, (err: any, result: any) => {
+    console.log(err);
 
-      // const size = {};
+    // const size = {};
 
-      // console.log(result.contents);
+    // console.log(result.contents);
 
-      // Object.keys(result.contents).forEach(p => {
-      //   size[p] =
-      //     result.contents[p].content && result.contents[p].content.length;
-      // });
+    // Object.keys(result.contents).forEach(p => {
+    //   size[p] =
+    //     result.contents[p].content && result.contents[p].content.length;
+    // });
 
-      if (result.error) {
-        res.status(422).json(result);
-      } else {
-        res.json(result);
-      }
-    });
+    if (result.error) {
+      res.status(422).json(result);
+    } else {
+      res.json(result);
+    }
   });
+});
 
-  app.listen(PORT, () => {
-    console.log("Listening on " + PORT);
-  });
+app.listen(PORT, () => {
+  console.log("Listening on " + PORT);
+});
 // }
