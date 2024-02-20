@@ -21,7 +21,9 @@ import { VERSION } from "../config";
 import resolve = require("resolve");
 import { packageFilter } from "./utils/resolver";
 import { execSync } from "child_process";
+import findPackageFile from "./packages/find-package-file";
 const cors = require("cors");
+const bodyParser = require("body-parser");
 
 // const { BUCKET_NAME } = process.env;
 // const SAVE_TO_S3 = !process.env.DISABLE_CACHING;
@@ -317,6 +319,9 @@ const app = express();
 
 // 添加跨域
 app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
 app.get("/*", (req: any, res: any) => {
   const packageParts = req.url.replace("/", "").split("@");
   const version = packageParts.pop();
@@ -343,6 +348,17 @@ app.get("/*", (req: any, res: any) => {
       res.json(result);
     }
   });
+});
+
+app.post("/api/file", async (req: any, res: any) => {
+  const postData = req.body;
+  const { name, version, fileName } = postData;
+  const dependency = { name, version };
+  const hash = getHash(dependency);
+  const pkgPath = path.join("/tmp", hash);
+
+  const pkgFile = await findPackageFile(dependency, pkgPath, fileName);
+  res.send({ content: pkgFile });
 });
 
 app.listen(PORT, () => {
