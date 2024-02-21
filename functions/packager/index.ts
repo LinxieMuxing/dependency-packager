@@ -22,6 +22,7 @@ import resolve = require("resolve");
 import { packageFilter } from "./utils/resolver";
 import { execSync } from "child_process";
 import findPackageFile from "./packages/find-package-file";
+import findPackageMeta from "./packages/find-package-meta";
 const cors = require("cors");
 const bodyParser = require("body-parser");
 
@@ -359,6 +360,19 @@ app.post("/api/file", async (req: any, res: any) => {
 
   const pkgFile = await findPackageFile(dependency, pkgPath, fileName);
   res.send({ content: pkgFile });
+});
+
+app.post("/api/meta", async (req: any, res: any) => {
+  // console.log("req", req);
+  const postData = req.body;
+  // console.log("postData", postData);
+  const { name, version, fileName } = postData;
+  const dependency = { name, version };
+  const hash = getHash(dependency);
+
+  const packagePath = path.join("/tmp", hash);
+  const packageFile = await findPackageMeta(dependency, packagePath);
+  res.send({ content: packageFile });
 });
 
 app.listen(PORT, () => {
